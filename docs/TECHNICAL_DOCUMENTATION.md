@@ -13,7 +13,7 @@ This document describes how the Unity project is built, so that a developer can 
 | Navigation | AI Navigation 2.0 (baked NavMesh per scene) |
 | UI | uGUI and TextMeshPro, built mostly from code |
 | Backend | Firebase Authentication and Firestore over the public REST interface (no Firebase SDK) |
-| First-party code | about 37,000 lines of C# in `Assets/Scripts/` (including 72 editor tools) |
+| First-party code | about 37,000 lines of C# in `Assets/Scripts/` (including 36 editor scripts) |
 | Package id | `com.example.firewall_3d` (kept the same as the earlier Android app) |
 | Android | min SDK 25, ARM64 |
 | Version | 0.1.0 |
@@ -163,7 +163,7 @@ Security notes for reviewers:
 
 ## 10. Editor tools
 
-Scene setup was done with editor tools under `Tools > Firewall Duty` (72 scripts in `Assets/Scripts/Editor/`). The main ones:
+Scene setup was done with editor tools under `Tools > Firewall Duty` (36 scripts in `Assets/Scripts/Editor/`). The main ones:
 - `Set Up Mission System`, `Set Up Doors In Open Scenes` (idempotent), `Set Up Hand Interaction Button In Open Scenes`
 - `Android > Prepare Android Build`, `Menu UI > Import Android Assets`, `Menu UI > Create Menu Scene`
 - `NPC > ...` (cubicle workers, IT experts, receptionist, meeting room, walking, NavMesh rebake)
