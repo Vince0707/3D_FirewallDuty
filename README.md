@@ -4,6 +4,7 @@ A first-person mobile game (Android) where the player investigates cybersecurity
 
 ## Documentation
 - [Software features](docs/SOFTWARE_FEATURES.md)
+- [Technical documentation](docs/TECHNICAL_DOCUMENTATION.md): architecture, backend, mission system, build and configuration
 - [Game flowchart](docs/flowchart.html): download the file and open it in a browser
 
 ## Requirements
