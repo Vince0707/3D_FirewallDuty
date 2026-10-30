@@ -1,0 +1,51 @@
+# Unity generated folders
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emory[Cc]aptures/
+/[Rr]ecordings/
+
+# IDE and generated project files (Unity rebuilds these)
+.vs/
+.idea/
+.vscode/
+*.csproj
+*.sln
+*.suo
+*.user
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+UpgradeLog*.htm
+*.tmp
+
+# Android build output
+*.apk
+*.aab
+*.unitypackage
+*.keystore
+*.jks
+
+# Local secrets: copy the *.example.json file next to each one and fill in real values
+/Assets/Resources/MenuUI/facebook_config.json
+/Assets/Resources/MenuUI/firebase_config.json
+/Assets/Resources/MenuUI/google_device_config.json
+/Assets/Resources/MenuUI/facebook_config.json.meta
+/Assets/Resources/MenuUI/firebase_config.json.meta
+/Assets/Resources/MenuUI/google_device_config.json.meta
+
+# Other tools
+.claude/
+ignore.conf
+
+# Android/Gradle temp output
+/.utmp/
+/.gradle/
