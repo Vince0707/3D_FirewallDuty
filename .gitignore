@@ -49,3 +49,4 @@ ignore.conf
 # Android/Gradle temp output
 /.utmp/
 /.gradle/
+/CLAUDE.md

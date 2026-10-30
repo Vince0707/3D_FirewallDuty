@@ -5,7 +5,6 @@ A first-person mobile game (Android) where the player investigates cybersecurity
 ## Documentation
 - [Software features](docs/SOFTWARE_FEATURES.md)
 - [Game flowchart](docs/flowchart.html): download the file and open it in a browser
-- [Project notes for developers](CLAUDE.md): architecture of the player controller, interaction system and doors
 
 ## Requirements
 - Unity **6000.4.6f1** (Unity 6), with Android Build Support for builds
