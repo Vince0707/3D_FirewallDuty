@@ -7,8 +7,8 @@ using UnityEngine;
 // The weather changes how people look and move (ApplyWeatherToStreet, called when the arrival starts):
 //   clear  everyone walks normally, and the joggers are out running
 //   rain   everyone has an umbrella (the right hand holds its handle), hurries, and hardly stops
-//   snow   everyone wears a beanie and a scarf, and walks slowly and carefully
-// The umbrellas, beanies and scarves are children named Weather_Umbrella, Weather_Beanie and Weather_Scarf (switched off in the scene), made by the setup tool.
+//   snow   everyone walks slowly and carefully
+// The umbrella is a child named Weather_Umbrella (switched off in the scene), made by the setup tool.
 [RequireComponent(typeof(Animator))]
 public class Pedestrian : MonoBehaviour
 {
@@ -29,8 +29,6 @@ public class Pedestrian : MonoBehaviour
     [SerializeField, Range(0.4f, 1.2f)] private float runAnimationSpeed = 0.8f;
 
     private const string UmbrellaName = "Weather_Umbrella";
-    private const string BeanieName = "Weather_Beanie";
-    private const string ScarfName = "Weather_Scarf";
 
     private Animator animator;
     private bool hasParameter;
@@ -78,8 +76,6 @@ public class Pedestrian : MonoBehaviour
         pauseFactor = rain ? 0.4f : 1f;
 
         SetProp(UmbrellaName, rain);
-        SetProp(BeanieName, snow);
-        SetProp(ScarfName, snow);
 
         // The right hand holds the umbrella's handle (HandIK, off unless it rains).
         HandIK hand = GetComponent<HandIK>();
@@ -89,8 +85,7 @@ public class Pedestrian : MonoBehaviour
 
     private void SetProp(string propName, bool on)
     {
-        // The umbrella is a child of the person, but the beanie and the scarf are children of the head and neck bones, so the search goes all the way
-        // down (Transform.Find only looks at the direct children), and into things that are switched off.
+        // Looks through everything below the person, also things that are switched off.
         foreach (Transform child in GetComponentsInChildren<Transform>(true))
         {
             if (child.name == propName)

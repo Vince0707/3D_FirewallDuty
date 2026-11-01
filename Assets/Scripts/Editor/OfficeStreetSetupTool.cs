@@ -682,80 +682,34 @@ public static class OfficeStreetSetupTool
         return true;
     }
 
-    // The umbrella (held by the right hand, through HandIK), the beanie and the scarf, all switched off. Pedestrian.ApplyWeather switches them on when it rains
-    // or snows. The beanie and scarf are sized from the character's own head and neck (measured on its mesh, with the head and neck sizes kept within sane
-    // limits) and attached to the head and neck bones, so they follow the head; the umbrella stays with the person and leans over the head.
+    // The umbrella (held by the right hand, through HandIK), switched off. Pedestrian.ApplyWeather switches it on when it rains. It stays with the person and
+    // leans over the head.
     private static void AddWeatherProps(GameObject person, int index)
     {
-        // The character's mesh as it stands now, in world space.
-        System.Collections.Generic.List<Vector3> points = new System.Collections.Generic.List<Vector3>();
+        // How tall the character is, from its mesh.
+        float feet = person.transform.position.y;
+        float top = feet + 1.7f;
+        bool measured = false;
         foreach (SkinnedMeshRenderer renderer in person.GetComponentsInChildren<SkinnedMeshRenderer>(true))
         {
-            Mesh baked = new Mesh();
-            renderer.BakeMesh(baked);
-            foreach (Vector3 v in baked.vertices)
-                points.Add(renderer.transform.TransformPoint(v));
-
-            Object.DestroyImmediate(baked);
+            top = measured ? Mathf.Max(top, renderer.bounds.max.y) : renderer.bounds.max.y;
+            measured = true;
         }
-
-        float feet = person.transform.position.y;
-        float top = points.Count > 0 ? float.MinValue : feet + 1.7f;
-        foreach (Vector3 p in points)
-            top = Mathf.Max(top, p.y);
-
-        // A head is about a seventh of the height of these characters. Everything is sized from this, so one wrong bone cannot make a giant ring.
-        float headHeight = Mathf.Clamp((top - feet) * 0.14f, 0.2f, 0.3f);
-
-        // The middle of the head: the middle of the highest points (the scalp).
-        Vector2 scalpMin = new Vector2(float.MaxValue, float.MaxValue);
-        Vector2 scalpMax = new Vector2(float.MinValue, float.MinValue);
-        foreach (Vector3 p in points)
-        {
-            if (p.y < top - 0.25f * headHeight)
-                continue;
-
-            scalpMin = Vector2.Min(scalpMin, new Vector2(p.x, p.z));
-            scalpMax = Vector2.Max(scalpMax, new Vector2(p.x, p.z));
-        }
-
-        Vector2 headCenter = scalpMax.x >= scalpMin.x ? (scalpMin + scalpMax) * 0.5f : new Vector2(person.transform.position.x, person.transform.position.z);
-
-        // How wide the head is where a beanie ends (a little below the top), and how wide the neck is just under the chin.
-        float beanieY = top - 0.38f * headHeight;
-        float headRadius = Mathf.Clamp(SliceRadius(points, beanieY, headCenter, 0.25f), 0.08f, 0.16f);
-        float neckY = top - 1.3f * headHeight;
-        float neckRadius = Mathf.Clamp(SliceRadius(points, neckY, headCenter, 0.2f), 0.045f, 0.1f);
-
-        Animator animator = person.GetComponent<Animator>();
-        Transform headBone = animator != null ? animator.GetBoneTransform(HumanBodyBones.Head) : null;
-        Transform neckBone = animator != null ? animator.GetBoneTransform(HumanBodyBones.Neck) : null;
-        if (neckBone == null)
-            neckBone = headBone;
 
         Color[] umbrellaColors =
         {
             new Color(0.75f, 0.12f, 0.12f), new Color(0.15f, 0.3f, 0.65f), new Color(0.12f, 0.12f, 0.14f),
             new Color(0.2f, 0.5f, 0.3f), new Color(0.9f, 0.6f, 0.1f), new Color(0.5f, 0.2f, 0.55f)
         };
-        Color[] woolColors =
-        {
-            new Color(0.8f, 0.15f, 0.15f), new Color(0.2f, 0.35f, 0.7f), new Color(0.9f, 0.85f, 0.75f),
-            new Color(0.15f, 0.5f, 0.35f), new Color(0.95f, 0.7f, 0.15f), new Color(0.35f, 0.35f, 0.4f)
-        };
 
         Material dark = Mat("Car_Dark", new Color(0.08f, 0.08f, 0.09f), 0.3f);
         Material silver = Mat("Car_Silver", new Color(0.7f, 0.72f, 0.75f), 0.8f);
         Color umbrellaColor = umbrellaColors[index % umbrellaColors.Length];
         Color umbrellaLight = Color.Lerp(umbrellaColor, Color.white, 0.7f);
-        Color woolColor = woolColors[(index + 2) % woolColors.Length];
-        Color woolEdge = Color.Lerp(woolColor, Color.white, 0.45f);
         Material canopyA = Mat("Umbrella_" + ColorUtility.ToHtmlStringRGB(umbrellaColor), umbrellaColor, 0.5f);
         Material canopyB = Mat("UmbrellaB_" + ColorUtility.ToHtmlStringRGB(umbrellaLight), umbrellaLight, 0.5f);
-        Material wool = Mat("Wool_" + ColorUtility.ToHtmlStringRGB(woolColor), woolColor, 0.1f);
-        Material woolBrim = Mat("WoolB_" + ColorUtility.ToHtmlStringRGB(woolEdge), woolEdge, 0.1f);
 
-        // ---- Umbrella: a pivot at the hand, tilted so the canopy comes over the head ----
+        // A pivot at the hand, tilted so the canopy comes over the head.
         GameObject umbrella = new GameObject("Weather_Umbrella");
         umbrella.transform.SetParent(person.transform, false);
         float chest = Mathf.Lerp(feet, top, 0.6f);
@@ -774,52 +728,11 @@ public static class OfficeStreetSetupTool
         handle.transform.localPosition = new Vector3(0f, -0.06f, 0f);
         umbrella.SetActive(false);
 
-        // ---- Beanie: a dome that sits on the head, a thin rolled brim round its lower edge, and a pom-pom ----
-        // The brim ring's centre line is just inside the dome's edge and its outer side reaches about 10 % past the head, so it is a band, not a donut.
-        float domeRadius = headRadius * 1.08f;
-        float brimScale = headRadius * 0.8f;
-        GameObject beanie = new GameObject("Weather_Beanie");
-        beanie.transform.position = new Vector3(headCenter.x, beanieY, headCenter.y);
-        MeshPart(beanie.transform, "Dome", DomeMesh(), Vector3.zero, new Vector3(domeRadius, headHeight * 0.55f, domeRadius), wool);
-        MeshPart(beanie.transform, "Brim", TorusMesh(), new Vector3(0f, 0.01f, 0f), new Vector3(brimScale, brimScale * 0.45f, brimScale), woolBrim);
-        Part(beanie.transform, "Pom", PrimitiveType.Sphere, new Vector3(0f, headHeight * 0.55f, 0f), new Vector3(0.08f, 0.08f, 0.08f), woolBrim, false);
-        beanie.transform.SetParent(headBone != null ? headBone : person.transform, true);
-        beanie.SetActive(false);
-
-        // ---- Scarf: a ring that hugs the neck, and a tail hanging down the front ----
-        // The ring's hole is the neck's width and its tube is thinner than the neck is wide, so it sits on the neck below the chin.
-        float ringScale = neckRadius * 1.6f;
-        GameObject scarf = new GameObject("Weather_Scarf");
-        scarf.transform.position = new Vector3(headCenter.x, neckY, headCenter.y);
-        MeshPart(scarf.transform, "Ring", TorusMesh(), Vector3.zero, new Vector3(ringScale, ringScale * 0.8f, ringScale), wool);
-        GameObject tail = Part(scarf.transform, "Tail", PrimitiveType.Cube, Vector3.zero, new Vector3(0.07f, 0.24f, 0.03f), woolBrim, false);
-        tail.transform.position = scarf.transform.position + person.transform.forward * (ringScale * 0.9f) + person.transform.right * (ringScale * 0.3f) + Vector3.down * 0.15f;
-        tail.transform.rotation = person.transform.rotation;
-        scarf.transform.SetParent(neckBone != null ? neckBone : person.transform, true);
-        scarf.SetActive(false);
-
         // The right hand holds the umbrella while it is up (off until it rains).
         HandIK hand = person.AddComponent<HandIK>();
         hand.rightHand = handle.transform;
         hand.enabled = false;
         EditorUtility.SetDirty(hand);
-    }
-
-    // The farthest the mesh reaches from a centre, among the points at one height (within 1.5 cm), ignoring points further than maxReach (arms, shoulders).
-    private static float SliceRadius(System.Collections.Generic.List<Vector3> points, float y, Vector2 center, float maxReach)
-    {
-        float radius = 0f;
-        foreach (Vector3 p in points)
-        {
-            if (Mathf.Abs(p.y - y) > 0.015f)
-                continue;
-
-            float distance = new Vector2(p.x - center.x, p.z - center.y).magnitude;
-            if (distance <= maxReach)
-                radius = Mathf.Max(radius, distance);
-        }
-
-        return radius;
     }
 
     // A block that is a mesh from a file instead of a Unity primitive; the materials go to the mesh's submeshes in order.
@@ -846,87 +759,6 @@ public static class OfficeStreetSetupTool
         mesh.name = "Mesh_" + name;
         AssetDatabase.CreateAsset(mesh, path);
         return mesh;
-    }
-
-    // A ring with a round cross-section: radius 1 to the middle of the tube, the tube 0.35 thick (so the hole is 0.65 wide).
-    private static Mesh TorusMesh()
-    {
-        return LoadOrSaveMesh("Torus", () =>
-        {
-            const int around = 20;
-            const int tube = 10;
-            const float major = 1f;
-            const float minor = 0.35f;
-
-            Vector3[] vertices = new Vector3[(around + 1) * (tube + 1)];
-            for (int i = 0; i <= around; i++)
-            {
-                float u = i / (float)around * Mathf.PI * 2f;
-                for (int j = 0; j <= tube; j++)
-                {
-                    float v = j / (float)tube * Mathf.PI * 2f;
-                    float ring = major + minor * Mathf.Cos(v);
-                    vertices[i * (tube + 1) + j] = new Vector3(ring * Mathf.Cos(u), minor * Mathf.Sin(v), ring * Mathf.Sin(u));
-                }
-            }
-
-            System.Collections.Generic.List<int> triangles = new System.Collections.Generic.List<int>();
-            for (int i = 0; i < around; i++)
-            {
-                for (int j = 0; j < tube; j++)
-                {
-                    int a = i * (tube + 1) + j;
-                    int b = (i + 1) * (tube + 1) + j;
-                    triangles.AddRange(new[] { a, a + 1, b, a + 1, b + 1, b });
-                }
-            }
-
-            Mesh mesh = new Mesh { vertices = vertices };
-            mesh.triangles = triangles.ToArray();
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            return mesh;
-        });
-    }
-
-    // The top half of a sphere of radius 1 (open at the bottom), for the beanie.
-    private static Mesh DomeMesh()
-    {
-        return LoadOrSaveMesh("Dome", () =>
-        {
-            const int around = 16;
-            const int rings = 6;
-
-            Vector3[] vertices = new Vector3[(around + 1) * (rings + 1)];
-            for (int i = 0; i <= around; i++)
-            {
-                float theta = i / (float)around * Mathf.PI * 2f;
-                for (int j = 0; j <= rings; j++)
-                {
-                    float phi = j / (float)rings * Mathf.PI * 0.5f;
-                    vertices[i * (rings + 1) + j] = new Vector3(Mathf.Sin(phi) * Mathf.Cos(theta), Mathf.Cos(phi), Mathf.Sin(phi) * Mathf.Sin(theta));
-                }
-            }
-
-            System.Collections.Generic.List<int> triangles = new System.Collections.Generic.List<int>();
-            for (int i = 0; i < around; i++)
-            {
-                for (int j = 0; j < rings; j++)
-                {
-                    int a = i * (rings + 1) + j;
-                    int b = (i + 1) * (rings + 1) + j;
-                    int c = a + 1;
-                    int d = b + 1;
-                    triangles.AddRange(new[] { a, b, c, b, d, c });
-                }
-            }
-
-            Mesh mesh = new Mesh { vertices = vertices };
-            mesh.triangles = triangles.ToArray();
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            return mesh;
-        });
     }
 
     // An umbrella canopy of eight panels, radius 1, a shallow dome with its rim at y = 0, seen from above and from below. The panels alternate between the
