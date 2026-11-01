@@ -24,6 +24,7 @@ public static class NpcSetupTool
     internal const string LoungeState = "Lounge";
     internal const string StandIdleParameter = "IsStandingIdle";
     internal const string StandIdleState = "StandIdle";
+    internal const string RunningParameter = "IsRunning";
     private const string WaypointRootName = "NPC_Waypoints";
 
     [MenuItem("Tools/Firewall Duty/NPC/Set Up NPC Walking (Selected Or Intern)")]
@@ -206,6 +207,7 @@ public static class NpcSetupTool
         EnsureParameter(controller, StandWorkingParameter);
         EnsureParameter(controller, LoungeParameter);
         EnsureParameter(controller, StandIdleParameter);
+        EnsureParameter(controller, RunningParameter);
 
         AnimatorStateMachine machine = controller.layers[0].stateMachine;
         AnimatorState idleState = EnsureState(machine, "Idle", idle);
@@ -231,6 +233,20 @@ public static class NpcSetupTool
         EnsureTransition(idleState, standIdleState, StandIdleParameter, true);
         EnsureTransition(walkState, standIdleState, StandIdleParameter, true);
         EnsureTransition(standIdleState, idleState, StandIdleParameter, false);
+
+        // Running, for the joggers in the street (a Humanoid run clip from the same pack). Without it the joggers simply stand still.
+        AnimationClip run = FindClip("AC_Run_F");
+        if (run != null && run.humanMotion)
+        {
+            AnimatorState runState = EnsureState(machine, "Run", run);
+            EnsureTransition(idleState, runState, RunningParameter, true);
+            EnsureTransition(walkState, runState, RunningParameter, true);
+            EnsureTransition(runState, idleState, RunningParameter, false);
+        }
+        else
+        {
+            report.AppendLine("The 'AC_Run_F' clip is missing or not Humanoid, so the joggers cannot run.");
+        }
 
         // The IK pass lets NpcCoffeeDrinker move a hand to the cup on top of whatever clip is playing.
         AnimatorControllerLayer[] layers = controller.layers;

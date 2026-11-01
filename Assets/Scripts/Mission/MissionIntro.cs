@@ -94,6 +94,9 @@ public class MissionIntro : MonoBehaviour
         bool bus = variant == 1;
         bool snow = variant == 2;
         bool first = scene == 1;
+
+        // The people on the pavements dress and move for the weather (umbrellas in rain, beanies and scarves in snow), and joggers come out on a clear day.
+        Pedestrian.ApplyWeatherToStreet(variant);
         string driver = bus ? "Bus driver" : "Taxi driver";
         string place = bank ? "the bank" : "the office";
         string greeter = bank ? "the first teller (Counter 1)" : "the receptionist";

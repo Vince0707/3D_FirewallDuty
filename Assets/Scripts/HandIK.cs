@@ -1,10 +1,10 @@
 using UnityEngine;
 
-// Keeps a seated driver's hands on the steering wheel. The sitting animation has the hands out in front, as if on a keyboard; this reaches both hands
-// to the two markers on the wheel (HandRest_L, HandRest_R) while the animation plays. It sits on the object that has the Animator, because Unity only
-// calls OnAnimatorIK there, and it needs "IK Pass" on the Animator Controller's layer (the setup tool turns that on).
+// Reaches a character's hands to two markers while the animation plays: a driver's hands on the steering wheel, or a pedestrian's right hand on an
+// umbrella's handle. A hand without a marker is left to the animation. It sits on the object that has the Animator, because Unity only calls
+// OnAnimatorIK there, it needs "IK Pass" on the Animator Controller's layer (the setup tool turns that on), and it only works while this component is enabled.
 [RequireComponent(typeof(Animator))]
-public class DriverHands : MonoBehaviour
+public class HandIK : MonoBehaviour
 {
     public Transform leftHand;
     public Transform rightHand;

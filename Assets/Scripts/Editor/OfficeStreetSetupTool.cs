@@ -620,35 +620,142 @@ public static class OfficeStreetSetupTool
             new Walker("mesh_office_m_black01", -25f, -65f, -28.8f, 1.15f, 0.8f)
         };
 
+        // Joggers: only out on a clear day (switched off here, MissionIntro's weather switches them on), on the long stretches of pavement.
+        Walker[] joggers =
+        {
+            new Walker("mesh_office_m_chara01", -10f, -90f, -14.0f, 3.0f, 0.3f),
+            new Walker("mesh_office_f_chara01", 12f, 95f, -28.4f, 3.2f, 0.6f)
+        };
+
         Material officeLook = FindOfficeCharacterMaterial();
 
         int made = 0;
         for (int i = 0; i < walkers.Length; i++)
         {
-            Walker w = walkers[i];
-            GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/PolygonalMind/LowPolyOffice/Characters/" + w.model + ".fbx");
-            if (asset == null)
-                continue;
-
-            GameObject person = (GameObject)PrefabUtility.InstantiatePrefab(asset, SceneManager.GetActiveScene());
-            person.name = "Pedestrian_" + (i + 1);
-            person.transform.SetParent(root, false);
-            person.transform.localScale = new Vector3(1f, 0.8666178f, 1f);   // the same height as everyone in the office
-            ApplyOfficeLook(person, officeLook);
-
-            Vector3 a = root.TransformPoint(new Vector3(w.fromX, WalkTop, w.z));
-            Vector3 b = root.TransformPoint(new Vector3(w.toX, WalkTop, w.z));
-            person.transform.position = Vector3.Lerp(a, b, w.startAt);
-
-            NpcSetupTool.ConfigureAnimator(person.transform, controller, new System.Collections.Generic.List<string>());
-
-            Pedestrian pedestrian = person.AddComponent<Pedestrian>();
-            pedestrian.Setup(a, b, w.speed, w.startAt);
-            EditorUtility.SetDirty(pedestrian);
-            made++;
+            if (PlacePedestrian(root, controller, officeLook, walkers[i], "Pedestrian_" + (i + 1), i, false))
+                made++;
         }
 
-        UnityEngine.Debug.Log("People outside: " + made + " pedestrian(s) walking on the pavements.");
+        int ran = 0;
+        for (int i = 0; i < joggers.Length; i++)
+        {
+            if (PlacePedestrian(root, controller, officeLook, joggers[i], "Jogger_" + (i + 1), i, true))
+                ran++;
+        }
+
+        UnityEngine.Debug.Log("People outside: " + made + " pedestrian(s) walking on the pavements, " + ran + " jogger(s) for clear days. " + report);
+    }
+
+    // One person on the pavement: a character that walks (or jogs) between two points, with the weather things on it (all switched off until the weather asks).
+    private static bool PlacePedestrian(Transform root, AnimatorController controller, Material officeLook, Walker w, string name, int index, bool jogger)
+    {
+        GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/PolygonalMind/LowPolyOffice/Characters/" + w.model + ".fbx");
+        if (asset == null)
+            return false;
+
+        GameObject person = (GameObject)PrefabUtility.InstantiatePrefab(asset, SceneManager.GetActiveScene());
+        person.name = name;
+        person.transform.SetParent(root, false);
+        person.transform.localScale = new Vector3(1f, 0.8666178f, 1f);   // the same height as everyone in the office
+        ApplyOfficeLook(person, officeLook);
+
+        Vector3 a = root.TransformPoint(new Vector3(w.fromX, WalkTop, w.z));
+        Vector3 b = root.TransformPoint(new Vector3(w.toX, WalkTop, w.z));
+        person.transform.position = Vector3.Lerp(a, b, w.startAt);
+
+        NpcSetupTool.ConfigureAnimator(person.transform, controller, new System.Collections.Generic.List<string>());
+
+        Pedestrian pedestrian = person.AddComponent<Pedestrian>();
+        pedestrian.Setup(a, b, w.speed, w.startAt);
+
+        if (jogger)
+        {
+            pedestrian.SetJogger();
+            person.SetActive(false);   // a clear day brings them out
+        }
+        else
+        {
+            AddWeatherProps(person, index);
+        }
+
+        EditorUtility.SetDirty(pedestrian);
+        return true;
+    }
+
+    // The umbrella (held by the right hand, through HandIK), and the beanie and scarf, all children of the person and switched off. Pedestrian.ApplyWeather
+    // switches them on when it rains or snows. They are placed from the height of the character, measured from its mesh.
+    private static void AddWeatherProps(GameObject person, int index)
+    {
+        bool measured = false;
+        Bounds bounds = new Bounds(person.transform.position, Vector3.zero);
+        foreach (SkinnedMeshRenderer renderer in person.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+        {
+            if (!measured)
+            {
+                bounds = renderer.bounds;
+                measured = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        // The top of the head, in the person's own space (the person is scaled, so the props are in that space too).
+        float top = measured ? person.transform.InverseTransformPoint(new Vector3(bounds.center.x, bounds.max.y, bounds.center.z)).y : 1.9f;
+
+        Color[] umbrellaColors =
+        {
+            new Color(0.75f, 0.12f, 0.12f), new Color(0.15f, 0.3f, 0.65f), new Color(0.12f, 0.12f, 0.14f),
+            new Color(0.2f, 0.5f, 0.3f), new Color(0.9f, 0.6f, 0.1f), new Color(0.5f, 0.2f, 0.55f)
+        };
+        Color[] woolColors =
+        {
+            new Color(0.8f, 0.15f, 0.15f), new Color(0.2f, 0.35f, 0.7f), new Color(0.9f, 0.85f, 0.75f),
+            new Color(0.15f, 0.5f, 0.35f), new Color(0.95f, 0.7f, 0.15f), new Color(0.35f, 0.35f, 0.4f)
+        };
+
+        Material dark = Mat("Car_Dark", new Color(0.08f, 0.08f, 0.09f), 0.3f);
+        Material silver = Mat("Car_Silver", new Color(0.7f, 0.72f, 0.75f), 0.8f);
+        Color umbrellaColor = umbrellaColors[index % umbrellaColors.Length];
+        Color woolColor = woolColors[(index + 2) % woolColors.Length];
+        Material canopy = Mat("Umbrella_" + ColorUtility.ToHtmlStringRGB(umbrellaColor), umbrellaColor, 0.5f);
+        Material wool = Mat("Wool_" + ColorUtility.ToHtmlStringRGB(woolColor), woolColor, 0.1f);
+
+        // Umbrella: a pole beside the head, the canopy over it, and a "Handle" marker where the right hand holds it.
+        GameObject umbrella = new GameObject("Weather_Umbrella");
+        umbrella.transform.SetParent(person.transform, false);
+        const float poleX = 0.27f;
+        const float poleZ = 0.12f;
+        float handleY = top * 0.52f;
+        float poleTop = top + 0.3f;
+        float poleHeight = poleTop - handleY;
+        Part(umbrella.transform, "Pole", PrimitiveType.Cylinder, new Vector3(poleX, handleY + poleHeight * 0.5f, poleZ), new Vector3(0.025f, poleHeight * 0.5f, 0.025f), silver, false);
+        Part(umbrella.transform, "Canopy", PrimitiveType.Sphere, new Vector3(poleX, poleTop, poleZ), new Vector3(1.05f, 0.34f, 1.05f), canopy, false);
+        Part(umbrella.transform, "Tip", PrimitiveType.Cylinder, new Vector3(poleX, poleTop + 0.17f, poleZ), new Vector3(0.012f, 0.05f, 0.012f), silver, false);
+        Part(umbrella.transform, "HandleGrip", PrimitiveType.Cube, new Vector3(poleX, handleY, poleZ), new Vector3(0.04f, 0.04f, 0.12f), dark, false);
+        GameObject handle = new GameObject("Handle");
+        handle.transform.SetParent(umbrella.transform, false);
+        handle.transform.localPosition = new Vector3(poleX, handleY, poleZ);
+        umbrella.SetActive(false);
+
+        // Beanie with a pom-pom.
+        GameObject beanie = Part(person.transform, "Weather_Beanie", PrimitiveType.Sphere, new Vector3(0f, top - 0.08f, 0f), new Vector3(0.3f, 0.22f, 0.3f), wool, false);
+        Part(beanie.transform, "Pom", PrimitiveType.Sphere, new Vector3(0f, 0.5f, 0f), new Vector3(0.3f, 0.3f, 0.3f), wool, false);
+        beanie.SetActive(false);
+
+        // Scarf: a ring round the neck and a tail hanging down the front.
+        GameObject scarf = new GameObject("Weather_Scarf");
+        scarf.transform.SetParent(person.transform, false);
+        Part(scarf.transform, "Ring", PrimitiveType.Cylinder, new Vector3(0f, top - 0.27f, 0f), new Vector3(0.26f, 0.035f, 0.26f), wool, false);
+        Part(scarf.transform, "Tail", PrimitiveType.Cube, new Vector3(0.07f, top - 0.43f, 0.13f), new Vector3(0.07f, 0.28f, 0.03f), wool, false);
+        scarf.SetActive(false);
+
+        // The right hand holds the umbrella while it is up (off until it rains).
+        HandIK hand = person.AddComponent<HandIK>();
+        hand.rightHand = handle.transform;
+        hand.enabled = false;
+        EditorUtility.SetDirty(hand);
     }
 
     // ---- The entrance ------------------------------------------------------------------------------------------------------
@@ -1188,7 +1295,7 @@ public static class OfficeStreetSetupTool
     }
 
     // A real person at the wheel: one of the office characters, seated by the same script that seats the people in the office, with the hands held on the
-    // steering wheel (DriverHands). "spot" is the floor under the hips in the vehicle's space, "hipHeight" how high the hips sit above it.
+    // steering wheel (HandIK). "spot" is the floor under the hips in the vehicle's space, "hipHeight" how high the hips sit above it.
     private static void BuildDriver(Transform vehicle, string model, Vector3 spot, float hipHeight, Transform wheel)
     {
         GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/PolygonalMind/LowPolyOffice/Characters/" + model + ".fbx");
@@ -1229,7 +1336,7 @@ public static class OfficeStreetSetupTool
         // The hands stay on the wheel for the whole ride (the seating script is switched off once the passengers have settled).
         if (animator != null && wheel != null)
         {
-            DriverHands hands = animator.gameObject.AddComponent<DriverHands>();
+            HandIK hands = animator.gameObject.AddComponent<HandIK>();
             hands.leftHand = wheel.Find("HandRest_L");
             hands.rightHand = wheel.Find("HandRest_R");
             EditorUtility.SetDirty(hands);
