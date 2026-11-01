@@ -6,7 +6,8 @@ using UnityEngine.Rendering.Universal;
 // Saved on the phone with the same names and defaults as the Android app, and applied to the game.
 public static class GameSettings
 {
-    public static int GraphicsQuality { get => PlayerPrefs.GetInt("graphicsQuality", 1); set => Save("graphicsQuality", value); }
+    // Until the player picks one in Settings, the game chooses for the phone (see AutoQuality).
+    public static int GraphicsQuality { get => PlayerPrefs.HasKey("graphicsQuality") ? PlayerPrefs.GetInt("graphicsQuality", 1) : AutoQuality; set => Save("graphicsQuality", value); }
     public static int Language { get => PlayerPrefs.GetInt("language", 0); set => Save("language", value); }
     public static int Sensitivity { get => PlayerPrefs.GetInt("sensitivity", 50); set => Save("sensitivity", value); }
     public static int MasterVolume { get => PlayerPrefs.GetInt("masterVolume", 80); set => Save("masterVolume", value); }
@@ -27,7 +28,8 @@ public static class GameSettings
     // ---- Graphics ---------------------------------------------------------------------------------------------
 
     // Low / Medium / High really change how heavy the game is: the render resolution, how far shadows are drawn, edge smoothing,
-    // how far detailed models are used, and texture sharpness.
+    // how far detailed models are used, texture sharpness, HDR, how many lights can light one object, and the frame rate.
+    // High is the look the game had before the lighter profiles.
     private struct Quality
     {
         public float renderScale;
@@ -36,18 +38,33 @@ public static class GameSettings
         public float lodBias;
         public int pixelLights;
         public int textureMipLimit;
+        public bool hdr;
+        public int lightsPerObject;
+        public int frameRate;
     }
 
     private static readonly Quality[] Levels =
     {
-        new Quality { renderScale = 0.7f,  msaa = 1, shadowDistance = 20f, lodBias = 0.7f, pixelLights = 1, textureMipLimit = 1 },   // Low
-        new Quality { renderScale = 0.85f, msaa = 1, shadowDistance = 35f, lodBias = 1f,   pixelLights = 2, textureMipLimit = 0 },   // Medium
-        new Quality { renderScale = 1f,    msaa = 2, shadowDistance = 60f, lodBias = 1.5f, pixelLights = 4, textureMipLimit = 0 },   // High
+        new Quality { renderScale = 0.7f,  msaa = 1, shadowDistance = 15f, lodBias = 0.7f, pixelLights = 1, textureMipLimit = 1, hdr = false, lightsPerObject = 2, frameRate = 30 },   // Low
+        new Quality { renderScale = 0.85f, msaa = 1, shadowDistance = 25f, lodBias = 1f,   pixelLights = 2, textureMipLimit = 0, hdr = false, lightsPerObject = 4, frameRate = 60 },   // Medium
+        new Quality { renderScale = 1f,    msaa = 2, shadowDistance = 60f, lodBias = 1.5f, pixelLights = 4, textureMipLimit = 0, hdr = true,  lightsPerObject = 8, frameRate = 60 },   // High
     };
+
+    // The level a phone gets until the player chooses one: phones with little memory or few cores start on Low, the rest on Medium.
+    // High is never picked automatically.
+    public static int AutoQuality
+    {
+        get
+        {
+            bool weak = SystemInfo.systemMemorySize < 4500 || SystemInfo.processorCount <= 4;
+            return weak ? 0 : 1;
+        }
+    }
 
     private static bool originalsSaved;
     private static float originalScale, originalShadow;
-    private static int originalMsaa;
+    private static int originalMsaa, originalLights;
+    private static bool originalHdr;
 
     public static void Apply()
     {
@@ -56,6 +73,7 @@ public static class GameSettings
         QualitySettings.lodBias = q.lodBias;
         QualitySettings.pixelLightCount = q.pixelLights;
         QualitySettings.globalTextureMipmapLimit = q.textureMipLimit;
+        Application.targetFrameRate = q.frameRate;
 
         UniversalRenderPipelineAsset urp = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
         if (urp != null)
@@ -67,12 +85,16 @@ public static class GameSettings
                 originalScale = urp.renderScale;
                 originalShadow = urp.shadowDistance;
                 originalMsaa = urp.msaaSampleCount;
+                originalHdr = urp.supportsHDR;
+                originalLights = urp.maxAdditionalLightsCount;
                 Application.quitting += RestoreAsset;
             }
 
             urp.renderScale = q.renderScale;
             urp.shadowDistance = q.shadowDistance;
             urp.msaaSampleCount = q.msaa;
+            urp.supportsHDR = q.hdr;
+            urp.maxAdditionalLightsCount = q.lightsPerObject;
         }
 
         // Master volume for everything that makes sound.
@@ -88,6 +110,8 @@ public static class GameSettings
         urp.renderScale = originalScale;
         urp.shadowDistance = originalShadow;
         urp.msaaSampleCount = originalMsaa;
+        urp.supportsHDR = originalHdr;
+        urp.maxAdditionalLightsCount = originalLights;
     }
 }
 
