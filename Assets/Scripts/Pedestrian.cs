@@ -89,9 +89,16 @@ public class Pedestrian : MonoBehaviour
 
     private void SetProp(string propName, bool on)
     {
-        Transform prop = transform.Find(propName);
-        if (prop != null)
-            prop.gameObject.SetActive(on);
+        // The umbrella is a child of the person, but the beanie and the scarf are children of the head and neck bones, so the search goes all the way
+        // down (Transform.Find only looks at the direct children), and into things that are switched off.
+        foreach (Transform child in GetComponentsInChildren<Transform>(true))
+        {
+            if (child.name == propName)
+            {
+                child.gameObject.SetActive(on);
+                return;
+            }
+        }
     }
 
     // ---- Walking ---------------------------------------------------------------------------------------------------------------
