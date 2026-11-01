@@ -934,6 +934,7 @@ public static class OfficeStreetSetupTool
         Transform taxi = BuildCar(root, MissionIntro.TaxiName, new Color(0.98f, 0.8f, 0.1f), true);
         taxi.position = new Vector3(95f, RoadTop, LaneZ);
         taxi.rotation = Quaternion.Euler(0f, 270f, 0f);
+        BuildDriver(taxi, "mesh_office_m_hipster01", new Vector3(-0.45f, 0.45f, 0.12f), 0.32f, taxi.Find("SteeringWheel"));   // seat top 0.63, floor top 0.45, hips 0.14 above the cushion
         taxi.gameObject.SetActive(false);   // it appears when the first mission starts
 
         GameObject path = new GameObject(MissionIntro.PathName);
@@ -951,6 +952,7 @@ public static class OfficeStreetSetupTool
         bus.position = new Vector3(95f, RoadTop, BusLaneZ);
         bus.rotation = Quaternion.Euler(0f, 270f, 0f);
         BuildPassengers(bus);
+        BuildDriver(bus, "mesh_office_m_suspenders01", new Vector3(-0.8f, 0.55f, 4.0f), 0.54f, bus.Find("SteeringWheel"));   // seat top 0.95, floor 0.55, hips 0.14 above the cushion
         bus.gameObject.SetActive(false);
 
         Marker(path.transform, "Bus_Start", new Vector3(95f, RoadTop, BusLaneZ), 270f);
@@ -983,7 +985,8 @@ public static class OfficeStreetSetupTool
 
         Part(car, "Chassis", PrimitiveType.Cube, new Vector3(0f, 0.33f, 0f), new Vector3(1.9f, 0.16f, 4.4f), dark, false);
         Part(car, "Floor", PrimitiveType.Cube, new Vector3(0f, 0.4f, -0.1f), new Vector3(1.8f, 0.1f, 2.8f), seat, false);
-        Part(car, "Hood", PrimitiveType.Cube, new Vector3(0f, 0.7f, 1.65f), new Vector3(1.85f, 0.5f, 1.5f), paint, false);
+        // The hood slopes down a little toward the front.
+        Part(car, "Hood", PrimitiveType.Cube, new Vector3(0f, 0.72f, 1.65f), new Vector3(1.85f, 0.5f, 1.5f), paint, false).transform.localRotation = Quaternion.Euler(3.5f, 0f, 0f);
         Part(car, "Trunk", PrimitiveType.Cube, new Vector3(0f, 0.7f, -1.8f), new Vector3(1.85f, 0.5f, 0.9f), paint, false);
         Part(car, "SideLeft", PrimitiveType.Cube, new Vector3(-0.93f, 0.7f, -0.1f), new Vector3(0.06f, 0.5f, 3.2f), paint, false);
         Part(car, "SideRightFront", PrimitiveType.Cube, new Vector3(0.93f, 0.7f, 0.85f), new Vector3(0.06f, 0.5f, 1.4f), paint, false);
@@ -1029,6 +1032,9 @@ public static class OfficeStreetSetupTool
                 tire.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
                 GameObject hub = Part(pivot.transform, "Hub", PrimitiveType.Cylinder, new Vector3(Mathf.Sign(x) * 0.07f, 0f, 0f), new Vector3(0.34f, 0.03f, 0.34f), silver, false);
                 hub.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+
+                if (taxi)
+                    AddSpokes(pivot.transform, x, silver);
             }
         }
 
@@ -1040,20 +1046,7 @@ public static class OfficeStreetSetupTool
 
         if (taxi)
         {
-            Material sign = Emissive("Taxi_Sign", new Color(1f, 0.95f, 0.7f));
-            Part(car, "TaxiSign", PrimitiveType.Cube, new Vector3(0f, 1.78f, -0.15f), new Vector3(0.7f, 0.2f, 0.3f), sign, false);
-
-            // A black stripe along the sides, and the driver at the wheel.
-            Part(car, "Stripe_L", PrimitiveType.Cube, new Vector3(-0.965f, 0.7f, -0.1f), new Vector3(0.02f, 0.1f, 3.0f), dark, false);
-            Part(car, "Stripe_R", PrimitiveType.Cube, new Vector3(0.965f, 0.7f, 0.85f), new Vector3(0.02f, 0.1f, 1.3f), dark, false);
-
-            Material shirt = Mat("Driver_Shirt", new Color(0.2f, 0.3f, 0.55f), 0.2f);
-            Material skin = Mat("Driver_Skin", new Color(0.85f, 0.65f, 0.5f), 0.2f);
-            Part(car, "Driver_Body", PrimitiveType.Cube, new Vector3(-0.45f, 0.95f, 0.15f), new Vector3(0.42f, 0.55f, 0.25f), shirt, false);
-            Part(car, "Driver_Head", PrimitiveType.Sphere, new Vector3(-0.45f, 1.36f, 0.15f), new Vector3(0.24f, 0.26f, 0.24f), skin, false);
-            Part(car, "Driver_Cap", PrimitiveType.Cube, new Vector3(-0.45f, 1.5f, 0.17f), new Vector3(0.27f, 0.07f, 0.3f), dark, false);
-            GameObject wheel = Part(car, "SteeringWheel", PrimitiveType.Cylinder, new Vector3(-0.45f, 1.04f, 0.7f), new Vector3(0.36f, 0.015f, 0.36f), dark, false);
-            wheel.transform.localRotation = Quaternion.Euler(70f, 0f, 0f);
+            AddTaxiDetails(car, doorPivot.transform, paint, dark, silver, seat);
 
             // Where the player's feet go: the right rear seat, next to the door.
             GameObject seatMarker = new GameObject("Seat");
@@ -1074,6 +1067,173 @@ public static class OfficeStreetSetupTool
         }
 
         return car;
+    }
+
+    // What makes the taxi look like a taxi up close: a black and white checker band, the roof sign, mirrors, bumpers with a grille and number plates,
+    // door handles, a trim line, flared wheel arches, and inside a meter, a rear-view mirror, a centre console, headrests and the steering wheel. Only the
+    // taxi gets these (the player sits in it); the parked cars are far away and stay simple, which keeps the scene light.
+    private static void AddTaxiDetails(Transform car, Transform door, Material paint, Material dark, Material silver, Material seat)
+    {
+        Material white = Mat("Car_White", new Color(0.93f, 0.93f, 0.94f), 0.4f);
+        Material plate = Mat("Car_Plate", new Color(0.95f, 0.95f, 0.9f), 0.3f);
+        Material sign = Emissive("Taxi_Sign", new Color(1f, 0.95f, 0.7f));
+        Material meter = Emissive("Taxi_Meter", new Color(0.3f, 1f, 0.5f));
+
+        // Roof sign.
+        Part(car, "TaxiSignBase", PrimitiveType.Cube, new Vector3(0f, 1.69f, -0.15f), new Vector3(0.5f, 0.03f, 0.2f), dark, false);
+        Part(car, "TaxiSign", PrimitiveType.Cube, new Vector3(0f, 1.78f, -0.15f), new Vector3(0.7f, 0.2f, 0.3f), sign, false);
+
+        // The checker band along the sides (the right rear door carries its part of it).
+        for (int i = 0; i < 15; i++)
+            Part(car, "Check_L", PrimitiveType.Cube, new Vector3(-0.965f, 0.62f, -1.55f + 0.2f * i), new Vector3(0.02f, 0.09f, 0.2f), i % 2 == 0 ? dark : white, false);
+        for (int i = 0; i < 6; i++)
+            Part(car, "Check_RF", PrimitiveType.Cube, new Vector3(0.965f, 0.62f, 0.25f + 0.2f * i), new Vector3(0.02f, 0.09f, 0.2f), i % 2 == 0 ? dark : white, false);
+        for (int i = 0; i < 3; i++)
+            Part(car, "Check_RB", PrimitiveType.Cube, new Vector3(0.965f, 0.62f, -1.95f + 0.2f * i), new Vector3(0.02f, 0.09f, 0.2f), i % 2 == 0 ? dark : white, false);
+        for (int i = 0; i < 5; i++)
+            Part(door, "Check_Door", PrimitiveType.Cube, new Vector3(0.035f, -0.08f, -0.1f - 0.2f * i), new Vector3(0.02f, 0.09f, 0.2f), i % 2 == 0 ? dark : white, false);
+
+        // A silver trim line along the top of the body, and door handles.
+        Part(car, "Trim_L", PrimitiveType.Cube, new Vector3(-0.955f, 0.9f, -0.1f), new Vector3(0.02f, 0.03f, 3.2f), silver, false);
+        Part(car, "Trim_RF", PrimitiveType.Cube, new Vector3(0.955f, 0.9f, 0.85f), new Vector3(0.02f, 0.03f, 1.4f), silver, false);
+        Part(car, "Trim_RB", PrimitiveType.Cube, new Vector3(0.955f, 0.9f, -1.7f), new Vector3(0.02f, 0.03f, 0.7f), silver, false);
+        Part(door, "Trim_Door", PrimitiveType.Cube, new Vector3(0.035f, 0.2f, -0.5f), new Vector3(0.02f, 0.03f, 1.0f), silver, false);
+        foreach (float z in new[] { 0.3f, -0.75f })
+            Part(car, "Handle_L", PrimitiveType.Cube, new Vector3(-0.97f, 0.82f, z), new Vector3(0.03f, 0.04f, 0.14f), silver, false);
+        Part(car, "Handle_RF", PrimitiveType.Cube, new Vector3(0.97f, 0.82f, 0.3f), new Vector3(0.03f, 0.04f, 0.14f), silver, false);
+        Part(door, "Handle_Door", PrimitiveType.Cube, new Vector3(0.04f, 0.12f, -0.85f), new Vector3(0.03f, 0.04f, 0.14f), silver, false);
+
+        // Side mirrors.
+        foreach (float side in new[] { -1f, 1f })
+        {
+            Part(car, "MirrorArm", PrimitiveType.Cube, new Vector3(side * 0.95f, 1.0f, 0.75f), new Vector3(0.12f, 0.03f, 0.04f), dark, false);
+            Part(car, "Mirror", PrimitiveType.Cube, new Vector3(side * 1.02f, 1.03f, 0.72f), new Vector3(0.05f, 0.14f, 0.2f), dark, false);
+        }
+
+        // Bumpers, grille and number plates.
+        Part(car, "FrontBumper", PrimitiveType.Cube, new Vector3(0f, 0.46f, 2.46f), new Vector3(1.9f, 0.16f, 0.16f), dark, false);
+        Part(car, "FrontBumperTrim", PrimitiveType.Cube, new Vector3(0f, 0.52f, 2.55f), new Vector3(1.5f, 0.03f, 0.02f), silver, false);
+        Part(car, "RearBumper", PrimitiveType.Cube, new Vector3(0f, 0.46f, -2.3f), new Vector3(1.9f, 0.16f, 0.14f), dark, false);
+        Part(car, "Grille", PrimitiveType.Cube, new Vector3(0f, 0.62f, 2.415f), new Vector3(0.9f, 0.2f, 0.03f), dark, false);
+        foreach (float y in new[] { 0.57f, 0.62f, 0.67f })
+            Part(car, "GrilleSlat", PrimitiveType.Cube, new Vector3(0f, y, 2.435f), new Vector3(0.85f, 0.015f, 0.01f), silver, false);
+        Part(car, "PlateFront", PrimitiveType.Cube, new Vector3(0f, 0.47f, 2.555f), new Vector3(0.5f, 0.13f, 0.015f), plate, false);
+        Part(car, "PlateRear", PrimitiveType.Cube, new Vector3(0f, 0.5f, -2.385f), new Vector3(0.5f, 0.13f, 0.015f), plate, false);
+
+        // Flared arches above the wheels.
+        foreach (float x in new[] { -0.99f, 0.99f })
+        {
+            foreach (float z in new[] { -1.3f, 1.3f })
+                Part(car, "Arch", PrimitiveType.Cube, new Vector3(x, 0.7f, z), new Vector3(0.12f, 0.05f, 0.86f), paint, false);
+        }
+
+        // Inside: the meter, instrument panel, rear-view mirror, centre console with the gear lever, and headrests on the back bench.
+        Part(car, "MeterBody", PrimitiveType.Cube, new Vector3(0.05f, 1.14f, 0.92f), new Vector3(0.24f, 0.12f, 0.12f), dark, false);
+        Part(car, "MeterScreen", PrimitiveType.Cube, new Vector3(0.05f, 1.15f, 0.855f), new Vector3(0.18f, 0.06f, 0.01f), meter, false);
+        Part(car, "Cluster", PrimitiveType.Cube, new Vector3(-0.45f, 1.11f, 0.86f), new Vector3(0.38f, 0.08f, 0.1f), dark, false);
+        Part(car, "MirrorStem", PrimitiveType.Cube, new Vector3(0f, 1.57f, 0.72f), new Vector3(0.03f, 0.12f, 0.03f), dark, false);
+        Part(car, "RearViewMirror", PrimitiveType.Cube, new Vector3(0f, 1.5f, 0.7f), new Vector3(0.24f, 0.07f, 0.03f), dark, false);
+        Part(car, "Console", PrimitiveType.Cube, new Vector3(0f, 0.58f, 0.45f), new Vector3(0.28f, 0.22f, 0.8f), seat, false);
+        Part(car, "GearLever", PrimitiveType.Cylinder, new Vector3(0f, 0.74f, 0.5f), new Vector3(0.04f, 0.08f, 0.04f), silver, false);
+        Part(car, "GearKnob", PrimitiveType.Sphere, new Vector3(0f, 0.84f, 0.5f), new Vector3(0.07f, 0.07f, 0.07f), dark, false);
+        foreach (float x in new[] { -0.45f, 0.45f })
+            Part(car, "RearHeadrest", PrimitiveType.Cube, new Vector3(x, 1.33f, -1.17f), new Vector3(0.3f, 0.16f, 0.1f), seat, false);
+
+        // The steering wheel, and the driver sitting at it.
+        SteeringWheel(car, "SteeringWheel", new Vector3(-0.45f, 1.04f, 0.7f), 70f, 0.18f, dark);
+    }
+
+    // A steering wheel from a ring of small blocks, a hub and two spokes. It tilts toward the driver. "HandRest_L" and "HandRest_R" (children) are where the
+    // driver's hands go, at 9 and 3 o'clock.
+    private static Transform SteeringWheel(Transform parent, string name, Vector3 position, float tilt, float radius, Material dark)
+    {
+        GameObject pivot = new GameObject(name);
+        pivot.transform.SetParent(parent, false);
+        pivot.transform.localPosition = position;
+        pivot.transform.localRotation = Quaternion.Euler(tilt, 0f, 0f);
+
+        const int segments = 14;
+        float chord = 2f * Mathf.PI * radius / segments * 1.25f;
+        for (int i = 0; i < segments; i++)
+        {
+            float angle = i * 360f / segments;
+            float rad = angle * Mathf.Deg2Rad;
+            GameObject piece = Part(pivot.transform, "Rim", PrimitiveType.Cube, new Vector3(Mathf.Cos(rad) * radius, 0f, Mathf.Sin(rad) * radius),
+                                    new Vector3(chord, radius * 0.2f, radius * 0.2f), dark, false);
+            piece.transform.localRotation = Quaternion.Euler(0f, -(angle + 90f), 0f);
+        }
+
+        Part(pivot.transform, "Hub", PrimitiveType.Cylinder, Vector3.zero, new Vector3(radius * 0.6f, 0.02f, radius * 0.6f), dark, false);
+        Part(pivot.transform, "SpokeAcross", PrimitiveType.Cube, Vector3.zero, new Vector3(radius * 2f, radius * 0.1f, radius * 0.1f), dark, false);
+        Part(pivot.transform, "SpokeDown", PrimitiveType.Cube, new Vector3(0f, 0f, radius * 0.5f), new Vector3(radius * 0.1f, radius * 0.1f, radius), dark, false);
+
+        foreach (float side in new[] { -1f, 1f })
+        {
+            GameObject rest = new GameObject(side < 0f ? "HandRest_L" : "HandRest_R");
+            rest.transform.SetParent(pivot.transform, false);
+            rest.transform.localPosition = new Vector3(side * radius, 0f, 0f);
+        }
+
+        return pivot.transform;
+    }
+
+    // Spokes on a wheel's outer face (three bars crossing at the hub, so six spokes). The wheel pivot spins them with the tire.
+    private static void AddSpokes(Transform pivot, float side, Material silver)
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            GameObject spoke = Part(pivot, "Spoke", PrimitiveType.Cube, new Vector3(Mathf.Sign(side) * 0.105f, 0f, 0f), new Vector3(0.02f, 0.3f, 0.05f), silver, false);
+            spoke.transform.localRotation = Quaternion.Euler(i * 60f, 0f, 0f);
+        }
+    }
+
+    // A real person at the wheel: one of the office characters, seated by the same script that seats the people in the office, with the hands held on the
+    // steering wheel (DriverHands). "spot" is the floor under the hips in the vehicle's space, "hipHeight" how high the hips sit above it.
+    private static void BuildDriver(Transform vehicle, string model, Vector3 spot, float hipHeight, Transform wheel)
+    {
+        GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/PolygonalMind/LowPolyOffice/Characters/" + model + ".fbx");
+        StringBuilder report = new StringBuilder();
+        AnimatorController controller = asset != null ? NpcSetupTool.EnsureLocomotionController(report) : null;
+        if (asset == null || controller == null)
+        {
+            UnityEngine.Debug.LogWarning("No driver was added to " + vehicle.name + ": " + (asset == null ? "the character model is missing." : report.ToString()));
+            return;
+        }
+
+        GameObject marker = new GameObject("Driver_Spot");
+        marker.transform.SetParent(vehicle, false);
+        marker.transform.localPosition = spot;
+
+        GameObject person = (GameObject)PrefabUtility.InstantiatePrefab(asset, SceneManager.GetActiveScene());
+        person.name = "Driver";
+        person.transform.SetParent(vehicle, false);
+        person.transform.localPosition = spot;
+        person.transform.localRotation = Quaternion.identity;
+        person.transform.localScale = new Vector3(1f, 0.8666178f, 1f);   // the same height as everyone in the office
+        ApplyOfficeLook(person, FindOfficeCharacterMaterial());
+
+        Animator animator = NpcSetupTool.ConfigureAnimator(person.transform, controller, new System.Collections.Generic.List<string>());
+
+        NpcWorker worker = person.AddComponent<NpcWorker>();
+        SerializedObject so = new SerializedObject(worker);
+        so.FindProperty("seat").objectReferenceValue = marker.transform;
+        so.FindProperty("animator").objectReferenceValue = animator;
+        so.FindProperty("startSeated").boolValue = true;
+        so.FindProperty("fitToSeat").boolValue = true;
+        so.FindProperty("workingParameter").stringValue = "IsWorking";
+        so.FindProperty("workingStateName").stringValue = "Work";
+        so.FindProperty("hipTarget").vector3Value = new Vector3(0f, hipHeight, -0.04f);
+        so.ApplyModifiedProperties();
+        EditorUtility.SetDirty(worker);
+
+        // The hands stay on the wheel for the whole ride (the seating script is switched off once the passengers have settled).
+        if (animator != null && wheel != null)
+        {
+            DriverHands hands = animator.gameObject.AddComponent<DriverHands>();
+            hands.leftHand = wheel.Find("HandRest_L");
+            hands.rightHand = wheel.Find("HandRest_R");
+            EditorUtility.SetDirty(hands);
+        }
     }
 
     // ---- The bus (mission 2) and its passengers ------------------------------------------------------------------------------
@@ -1186,14 +1346,9 @@ public static class OfficeStreetSetupTool
         }
 
         // The driver.
-        Material shirt = Mat("Driver_Shirt", new Color(0.2f, 0.3f, 0.55f), 0.2f);
-        Material skin = Mat("Driver_Skin", new Color(0.85f, 0.65f, 0.5f), 0.2f);
+        // (The driver himself is added by BuildDriver, once the bus is finished.)
         Part(bus, "Driver_Seat", PrimitiveType.Cube, new Vector3(-0.8f, 0.75f, 4.0f), new Vector3(0.6f, 0.4f, 0.5f), seatMat, false);
-        Part(bus, "Driver_Body", PrimitiveType.Cube, new Vector3(-0.8f, 1.25f, 4.05f), new Vector3(0.45f, 0.6f, 0.28f), shirt, false);
-        Part(bus, "Driver_Head", PrimitiveType.Sphere, new Vector3(-0.8f, 1.7f, 4.1f), new Vector3(0.25f, 0.27f, 0.25f), skin, false);
-        Part(bus, "Driver_Cap", PrimitiveType.Cube, new Vector3(-0.8f, 1.84f, 4.12f), new Vector3(0.28f, 0.07f, 0.3f), dark, false);
-        GameObject wheel = Part(bus, "SteeringWheel", PrimitiveType.Cylinder, new Vector3(-0.8f, 1.5f, 4.6f), new Vector3(0.5f, 0.02f, 0.5f), dark, false);
-        wheel.transform.localRotation = Quaternion.Euler(60f, 0f, 0f);
+        SteeringWheel(bus, "SteeringWheel", new Vector3(-0.8f, 1.5f, 4.6f), 60f, 0.25f, dark);
 
         // The player's seat: on the right, in the middle of the bus (the row nearest its centre). Eyes are 1.16 m above the floor when sitting there.
         GameObject seatMarker = new GameObject("Seat");

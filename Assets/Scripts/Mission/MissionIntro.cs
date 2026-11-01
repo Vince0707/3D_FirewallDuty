@@ -179,12 +179,13 @@ public class MissionIntro : MonoBehaviour
 
         // The passengers sit down and settle while the bus still stands (the screen is black). The seating script measures where each person's hips
         // are and moves them onto the seat: that must be finished before the bus moves, or the moving seat keeps pulling them back and they fall behind.
-        // Afterwards the script is switched off: they are the bus's children and simply ride with it.
-        if (bus)
+        // Afterwards the script is switched off: they are the bus's children and simply ride with it. The taxi has its driver seated the same way.
+        NpcWorker[] seated = vehicle.GetComponentsInChildren<NpcWorker>(true);
+        if (bus || seated.Length > 0)
         {
             yield return new WaitForSeconds(2.6f);
 
-            foreach (NpcWorker worker in vehicle.GetComponentsInChildren<NpcWorker>(true))
+            foreach (NpcWorker worker in seated)
                 worker.enabled = false;
         }
 
